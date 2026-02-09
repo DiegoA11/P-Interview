@@ -27,6 +27,9 @@ object Protocol {
   implicit val currencyEncoder: Encoder[Currency] =
     Encoder.instance[Currency] { show.show _ andThen Json.fromString }
 
+  implicit val priceEncoder: Encoder[Price] =
+    Encoder.instance[Price](price => Json.fromBigDecimal(price.value))
+
   implicit val pairEncoder: Encoder[Pair] =
     deriveConfiguredEncoder[Pair]
 

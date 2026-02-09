@@ -10,6 +10,8 @@ import forex.services.errors._
 class OneFrameClientDummy[F[_]: Applicative] extends OneFrameClientAlgebra[F] {
 
   override def get(pair: Rate.Pair): F[Either[ServiceError, Rate]] =
-    Rate(pair, Price(BigDecimal(100)), Timestamp.now).asRight[ServiceError].pure[F]
-
+    Price(100)
+      .map(Rate(pair, _, Timestamp.now))
+      .leftMap(toServiceError)
+      .pure[F]
 }

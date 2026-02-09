@@ -20,8 +20,9 @@ class RatesHttpRoutes[F[_]: Sync](rates: RatesProgram[F]) extends Http4sDsl[F] {
       (fromParam, toParam).tupled.fold(
         errors => BadRequest(errors.map(_.message).toList.mkString(", ")), {
           case (from, to) =>
-            rates.get(RatesProgramProtocol.GetRatesRequest(from, to)).flatMap(Sync[F].fromEither).flatMap { rate =>
-              Ok(rate.asGetApiResponse)
+            rates.get(RatesProgramProtocol.GetRatesRequest(from, to)).flatMap {
+              case Right(rate) => Ok(rate.asGetApiResponse)
+              case Left(error) => BadGateway(error.getMessage)
             }
         }
       )
