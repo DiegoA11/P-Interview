@@ -16,6 +16,7 @@ object Currency {
   case object USD extends Currency
 
   implicit val show: Show[Currency] = Show.show {
+    //TODO: Are we going to handle more currencies? Is there a better way to do this?
     case AUD => "AUD"
     case CAD => "CAD"
     case CHF => "CHF"
@@ -28,6 +29,7 @@ object Currency {
   }
 
   def fromString(s: String): Currency = s.toUpperCase match {
+    //TODO: We should update how the currencies are being built. The match is not exhaustive.
     case "AUD" => AUD
     case "CAD" => CAD
     case "CHF" => CHF
