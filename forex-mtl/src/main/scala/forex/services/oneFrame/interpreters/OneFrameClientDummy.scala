@@ -11,7 +11,7 @@ class OneFrameClientDummy[F[_]: Applicative] extends OneFrameClientAlgebra[F] {
 
   override def get(pair: Rate.Pair): F[Either[ServiceError, Rate]] =
     Price(100)
-      .map(Rate(pair, _, Timestamp.now))
+      .map(mockPrice => Rate(pair, mockPrice, mockPrice, mockPrice, Timestamp.now))
       .leftMap(toServiceError)
       .pure[F]
 }
