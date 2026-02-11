@@ -7,8 +7,8 @@ import weaver.scalacheck.Checkers
 
 object PriceSpec extends SimpleIOSuite with Checkers {
 
-  test("Price should accept any positive integer") {
-    forall(Gen.posNum[Int]) { value =>
+  test("Price should accept any positive double") {
+    forall(Gen.posNum[Double]) { value =>
       Price(value).fold(
         error => failure(s"Expected Right for positive $value, got Left($error)"),
         price => expect(price.value == BigDecimal(value))
@@ -17,7 +17,7 @@ object PriceSpec extends SimpleIOSuite with Checkers {
   }
 
   test("Price should reject any non-positive integer") {
-    forall(Gen.choose(Int.MinValue, 0)) { value =>
+    forall(Gen.choose(Double.MinValue, 0)) { value =>
       expect(Price(value).isLeft)
     }
   }
