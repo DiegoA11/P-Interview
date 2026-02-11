@@ -49,7 +49,11 @@ final case class OneFrameLiveClient[F[_]: Sync](
         val serviceResponse: F[Either[ServiceError, List[Rate]]] =
           if (response.status.isSuccess) {
             response.as[List[OneFrameResponseDTO]].map { dtos =>
-              dtos.traverse(OneFrameMapper.toDomain)
+              if (pairs.nonEmpty && dtos.isEmpty) {
+                ServiceError
+                  .OneFrameLookupFailed(s"No rates returned for requested pairs: ${pairs.mkString(", ")}")
+                  .asLeft
+              } else dtos.traverse(OneFrameMapper.toDomain)
             }
           } else {
             response.bodyText.compile.string.map { body =>
