@@ -6,9 +6,13 @@ import forex.services.errors.ServiceError.OneFrameLookupFailed
 
 object errors {
 
-  sealed trait ServiceError
+  sealed trait ServiceError {
+    def message: String
+  }
   object ServiceError {
-    final case class OneFrameLookupFailed(msg: String) extends ServiceError
+    final case class OneFrameLookupFailed(msg: String) extends ServiceError {
+      override val message: String = msg
+    }
   }
 
   def toServiceError(error: DomainError): ServiceError = error match {
