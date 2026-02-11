@@ -2,7 +2,7 @@ package forex.services.oneFrame.interpreters
 
 import cats.Applicative
 import cats.syntax.all._
-import forex.domain.{Price, Rate, Timestamp}
+import forex.domain.{ Price, Rate, Timestamp }
 import forex.services.errors._
 import forex.services.oneFrame.OneFrameClientAlgebra
 
