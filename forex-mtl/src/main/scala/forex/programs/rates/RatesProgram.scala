@@ -10,8 +10,15 @@ class RatesProgram[F[_]: Functor](
     ratesService: RatesService[F]
 ) extends RatesProgramAlgebra[F] {
 
-  override def get(request: Protocol.GetRatesRequest): F[Either[RatesProgramError, Rate]] =
-    EitherT(ratesService.get(Rate.Pair(request.from, request.to))).leftMap(toProgramError).value
+  override def get(request: Protocol.GetRatesRequest): F[Either[RatesProgramError, Rate]] = {
+    val pair = Rate.Pair(request.from, request.to)
+    EitherT(ratesService.get(List(pair)))
+      .leftMap(toProgramError)
+      .subflatMap { rates =>
+        rates.headOption.toRight(RatesProgramError.RateLookupFailed("Rate does not exist"))
+      }
+      .value
+  }
 
 }
 

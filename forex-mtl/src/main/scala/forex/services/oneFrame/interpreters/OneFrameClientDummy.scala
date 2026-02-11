@@ -1,17 +1,19 @@
 package forex.services.oneFrame.interpreters
 
-import forex.services.oneFrame.OneFrameClientAlgebra
 import cats.Applicative
-import cats.syntax.applicative._
-import cats.syntax.either._
-import forex.domain.{ Price, Rate, Timestamp }
+import cats.syntax.all._
+import forex.domain.{Price, Rate, Timestamp}
 import forex.services.errors._
+import forex.services.oneFrame.OneFrameClientAlgebra
 
 class OneFrameClientDummy[F[_]: Applicative] extends OneFrameClientAlgebra[F] {
 
-  override def get(pair: Rate.Pair): F[Either[ServiceError, Rate]] =
-    Price(100)
-      .map(mockPrice => Rate(pair, mockPrice, mockPrice, mockPrice, Timestamp.now))
-      .leftMap(toServiceError)
+  override def get(pairs: List[Rate.Pair]): F[Either[ServiceError, List[Rate]]] =
+    pairs
+      .traverse { pair =>
+        Price(100)
+          .map(mockPrice => Rate(pair, mockPrice, mockPrice, mockPrice, Timestamp.now))
+          .leftMap(toServiceError)
+      }
       .pure[F]
 }
