@@ -16,7 +16,7 @@ object PriceSpec extends SimpleIOSuite with Checkers {
     }
   }
 
-  test("Price should reject any non-positive integer") {
+  test("Price should reject any non-positive double") {
     forall(Gen.choose(Double.MinValue, 0)) { value =>
       expect(Price(value).isLeft)
     }
