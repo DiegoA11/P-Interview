@@ -2,19 +2,11 @@ package forex.domain
 
 import org.scalacheck.{ Arbitrary, Gen }
 
+import java.time.OffsetDateTime
+
 object Generators {
 
-  val supportedCurrencies: List[Currency] = List(
-    Currency.AUD,
-    Currency.CAD,
-    Currency.CHF,
-    Currency.EUR,
-    Currency.GBP,
-    Currency.NZD,
-    Currency.JPY,
-    Currency.SGD,
-    Currency.USD
-  )
+  val supportedCurrencies: List[Currency] = Currency.allCurrencies
 
   val currencyGen: Gen[Currency] =
     Gen.oneOf(supportedCurrencies)
@@ -36,4 +28,38 @@ object Generators {
       to <- currencyGen
     } yield (from, to)
 
+  val distinctCurrencyPairGen: Gen[Rate.Pair] =
+    for {
+      from <- currencyGen
+      to <- Gen.oneOf(supportedCurrencies.filterNot(_ == from))
+    } yield Rate.Pair(from, to)
+
+  val priceGen: Gen[Price] =
+    Gen.choose(0.01, 10000.0).map(v => Price(v).toOption.get)
+
+  val timestampGen: Gen[Timestamp] =
+    Gen.choose(-3600L, 3600L).map { offsetSeconds =>
+      Timestamp(OffsetDateTime.now().plusSeconds(offsetSeconds))
+    }
+
+  def freshTimestamp: Timestamp =
+    Timestamp(OffsetDateTime.now())
+
+  val rateGen: Gen[Rate] =
+    for {
+      pair <- distinctCurrencyPairGen
+      bid <- priceGen
+      ask <- priceGen
+      price <- priceGen
+      ts <- timestampGen
+    } yield Rate(pair, bid, ask, price, ts)
+
+  def freshRateForPair(pair: Rate.Pair): Rate =
+    Rate(
+      pair,
+      Price(1.0).toOption.get,
+      Price(1.1).toOption.get,
+      Price(1.05).toOption.get,
+      freshTimestamp
+    )
 }

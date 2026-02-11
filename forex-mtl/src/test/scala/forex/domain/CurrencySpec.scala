@@ -31,8 +31,10 @@ object CurrencySpec extends SimpleIOSuite with Checkers {
   pureTest("fromString should be case-insensitive") {
     forEach(knownMappings) {
       case (code, expected) =>
-        expect(Currency.fromString(code.toLowerCase) == Right(expected)) and
-          expect(Currency.fromString(code.capitalize) == Right(expected))
+        expect.all(
+          Currency.fromString(code.toLowerCase) == Right(expected),
+          Currency.fromString(code.capitalize) == Right(expected)
+        )
     }
   }
 

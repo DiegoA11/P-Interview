@@ -12,7 +12,7 @@ import forex.services.oneFrame.OneFrameClientAlgebra
 
 import java.time.{ Duration, OffsetDateTime }
 
-class RatesRefCache[F[_]: Concurrent: Timer] private (
+class RatesRefCache[F[_]: Concurrent: Timer] private[cache] (
     ref: Ref[F, Map[Rate.Pair, Rate]],
     oneFrameClient: OneFrameClientAlgebra[F],
     config: CacheConfig

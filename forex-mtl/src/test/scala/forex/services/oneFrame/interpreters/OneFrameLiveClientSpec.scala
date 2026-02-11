@@ -34,10 +34,12 @@ object OneFrameLiveClientSpec extends SimpleIOSuite {
   test("sends GET /rates with repeated pair params and token header") {
     val app: HttpApp[IO] = HttpApp { req: Request[IO] =>
       val assertions =
-      expect(req.method == GET) &&
-      expect(req.uri.path.renderString == "/rates") &&
-      expect(req.headers.get(ci"token").exists(_.head.value == token)) &&
-      expect(req.multiParams.getOrElse("pair", Nil).toList == List("USDJPY", "EURUSD"))
+        expect.all(
+          req.method == GET,
+          req.uri.path.renderString == "/rates",
+          req.headers.get(ci"token").exists(_.head.value == token),
+          req.multiParams.getOrElse("pair", Nil).toList == List("USDJPY", "EURUSD")
+        )
 
       val body =
         s"""[
@@ -54,8 +56,7 @@ object OneFrameLiveClientSpec extends SimpleIOSuite {
     val client = buildMockClient(app)
 
     client.get(List(usdJpy, eurUsd)).map { result =>
-      expect(result.isRight) &&
-      expect(result.toOption.exists(_.size == 2))
+      expect.all(result.isRight, result.toOption.exists(_.size == 2))
     }
   }
 
@@ -68,8 +69,7 @@ object OneFrameLiveClientSpec extends SimpleIOSuite {
 
     client.get(List(usdJpy)).map {
       case Left(err) =>
-        expect(err.message.contains("HTTP 429")) &&
-        expect(err.message.toLowerCase.contains("quota exceeded"))
+        expect.all(err.message.contains("HTTP 429"), err.message.toLowerCase.contains("quota exceeded"))
       case Right(_) =>
         failure("Expected Left(ServiceError), got Right")
     }
@@ -83,8 +83,10 @@ object OneFrameLiveClientSpec extends SimpleIOSuite {
     val client = buildMockClient(app)
 
     client.get(List(usdJpy)).map {
-      case Left(err)  => expect(err.isInstanceOf[ServiceError])
-      case Right(res) => failure(s"Expected Left, got Right($res)")
+      _.fold(
+        error => expect(error.isInstanceOf[ServiceError]),
+        response => failure(s"Expected Left, got Right($response)")
+      )
     }
   }
 
@@ -96,8 +98,10 @@ object OneFrameLiveClientSpec extends SimpleIOSuite {
     val client = buildMockClient(app)
 
     client.get(List(usdJpy)).map {
-      case Left(err)  => expect(err.message.toLowerCase.contains("oneframe http error"))
-      case Right(res) => failure(s"Expected Left, got Right($res)")
+      _.fold(
+        error => expect(error.message.toLowerCase.contains("oneframe http error")),
+        response => failure(s"Expected Left, got Right($response)")
+      )
     }
   }
 
@@ -115,8 +119,10 @@ object OneFrameLiveClientSpec extends SimpleIOSuite {
     val client = buildMockClient(app)
 
     client.get(List(usdJpy)).map {
-      case Left(err)  => expect(err.message.toLowerCase.contains("invalid response"))
-      case Right(res) => failure(s"Expected Left, got Right($res)")
+      _.fold(
+        error => expect(error.message.toLowerCase.contains("invalid response")),
+        response => failure(s"Expected Left, got Right($response)")
+      )
     }
   }
 }
