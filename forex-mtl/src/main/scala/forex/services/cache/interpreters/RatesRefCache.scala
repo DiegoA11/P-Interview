@@ -10,7 +10,7 @@ import forex.services.errors.ServiceError
 import forex.services.errors.ServiceError.OneFrameLookupFailed
 import forex.services.oneFrame.OneFrameClientAlgebra
 
-import java.time.OffsetDateTime
+import java.time.{ Duration, OffsetDateTime }
 
 class RatesRefCache[F[_]: Concurrent: Timer] private (
     ref: Ref[F, Map[Rate.Pair, Rate]],
@@ -20,21 +20,21 @@ class RatesRefCache[F[_]: Concurrent: Timer] private (
 
   override def get(pair: Rate.Pair): F[Either[ServiceError, Rate]] =
     ref.get.map { cache =>
-      cache.get(pair) match {
-        case None =>
+      cache
+        .get(pair)
+        .fold[Either[ServiceError, Rate]](
           OneFrameLookupFailed(s"No cached rate for ${pair.from}${pair.to}").asLeft
-
-        case Some(rate) =>
+        ) { rate =>
           if (isStale(rate))
             OneFrameLookupFailed(s"Cached rate for ${pair.from}${pair.to} is stale").asLeft
           else
             rate.asRight
-      }
+        }
     }
 
   private def isStale(rate: Rate): Boolean = {
     val now = OffsetDateTime.now()
-    val age = java.time.Duration.between(rate.timestamp.value, now)
+    val age = Duration.between(rate.timestamp.value, now)
     age.toMillis > config.maxAge.toMillis
   }
 
