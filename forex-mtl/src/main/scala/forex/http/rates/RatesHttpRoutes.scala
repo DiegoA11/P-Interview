@@ -19,7 +19,7 @@ class RatesHttpRoutes[F[_]: Sync](rates: RatesProgram[F]) extends Http4sDsl[F] {
       (fromParam, toParam).tupled.fold(
         errors => BadRequest(errors.map(_.message).toList.mkString(", ")), {
           case (from, to) =>
-            val apiRequest = GetApiRequest(from = from, to = to)
+            val apiRequest = GetApiRequest(from, to)
 
             apiRequest.toProgramRequest match {
               case Left(msg) =>

@@ -12,9 +12,6 @@ final case class OneFrameRequestDTO(
 
 object OneFrameRequestDTO {
 
-  def fromPair(pair: Rate.Pair): OneFrameRequestDTO =
-    OneFrameRequestDTO(List(pair))
-
   def fromPairs(pairs: List[Rate.Pair]): OneFrameRequestDTO =
     OneFrameRequestDTO(pairs)
 }
