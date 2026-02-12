@@ -65,6 +65,7 @@ libraryDependencies ++= Seq(
   Libraries.log4catsSlf4j,
   Libraries.pureConfig,
   Libraries.logback,
+  Libraries.logstashLogbackEncoder,
   Libraries.scalaCheck       % Test,
   Libraries.catsScalaCheck   % Test,
   Libraries.weaverCats       % Test,
