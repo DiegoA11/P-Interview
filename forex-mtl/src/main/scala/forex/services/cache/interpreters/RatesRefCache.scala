@@ -1,7 +1,7 @@
 package forex.services.cache.interpreters
 
 import cats.effect.concurrent.Ref
-import cats.effect.{ Concurrent, Timer }
+import cats.effect.{ Clock, Concurrent, Timer }
 import cats.syntax.all._
 import forex.config.CacheConfig
 import forex.domain.{ Currency, Rate }
@@ -11,7 +11,8 @@ import forex.services.errors.ServiceError.OneFrameLookupFailed
 import forex.services.oneFrame.OneFrameClientAlgebra
 import org.typelevel.log4cats.Logger
 
-import java.time.{ Duration, OffsetDateTime }
+import java.time.{ Duration, Instant, OffsetDateTime, ZoneOffset }
+import java.util.concurrent.TimeUnit
 
 class RatesRefCache[F[_]: Concurrent: Timer: Logger] private[cache] (
     ref: Ref[F, Map[Rate.Pair, Rate]],
@@ -20,21 +21,22 @@ class RatesRefCache[F[_]: Concurrent: Timer: Logger] private[cache] (
 ) extends RatesCacheAlgebra[F] {
 
   override def get(pair: Rate.Pair): F[Either[ServiceError, Rate]] =
-    ref.get.map { cache =>
+    for {
+      now <- Clock[F].realTime(TimeUnit.MILLISECONDS).map(ms => Instant.ofEpochMilli(ms).atOffset(ZoneOffset.UTC))
+      cache <- ref.get
+    } yield
       cache
         .get(pair)
         .fold[Either[ServiceError, Rate]](
           OneFrameLookupFailed(s"No cached rate for ${pair.from}${pair.to}").asLeft
         ) { rate =>
-          if (isStale(rate))
+          if (isStale(rate, now))
             OneFrameLookupFailed(s"Cached rate for ${pair.from}${pair.to} is stale").asLeft
           else
             rate.asRight
         }
-    }
 
-  private def isStale(rate: Rate): Boolean = {
-    val now = OffsetDateTime.now()
+  private def isStale(rate: Rate, now: OffsetDateTime): Boolean = {
     val age = Duration.between(rate.timestamp.value, now)
     age.toMillis > config.maxAge.toMillis
   }
@@ -51,10 +53,15 @@ class RatesRefCache[F[_]: Concurrent: Timer: Logger] private[cache] (
         case Left(error) =>
           Logger[F].error(s"Cache refresh failed: ${error.message}")
       }
+      .handleErrorWith { throwable =>
+        Logger[F].error(s"Unexpected error during cache refresh: ${throwable.getMessage}")
+      }
 
   private[cache] def startBackgroundRefresh: F[Unit] = {
     val loop: F[Unit] =
-      (Timer[F].sleep(config.refreshInterval) *> refresh).foreverM[Unit]
+      (Timer[F].sleep(config.refreshInterval) *> refresh.handleErrorWith { throwable =>
+        Logger[F].error(s"Background refresh failed: ${throwable.getMessage}")
+      }).foreverM[Unit]
 
     Concurrent[F].start(loop).void
   }
@@ -76,7 +83,9 @@ object RatesRefCache {
     for {
       ref <- Ref.of[F, Map[Rate.Pair, Rate]](Map.empty)
       cache = new RatesRefCache[F](ref, oneFrameClient, config)
-      _ <- cache.refresh
+      _ <- cache.refresh.handleErrorWith { throwable =>
+            Logger[F].warn(s"Initial cache refresh failed, starting with empty cache: ${throwable.getMessage}")
+          }
       _ <- cache.startBackgroundRefresh
     } yield cache
 }
