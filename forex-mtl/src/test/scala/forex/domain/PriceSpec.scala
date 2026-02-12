@@ -25,8 +25,8 @@ object PriceSpec extends SimpleIOSuite with Checkers {
   pureTest("Price should reject zero") {
     Price(0).fold(
       {
-        case InvalidPrice(0) => success
-        case other           => failure(s"Expected InvalidPrice(0), got $other")
+        case InvalidPrice(value) => expect(value == BigDecimal(0))
+        case other               => failure(s"Expected InvalidPrice(0), got $other")
       },
       _ => failure("Expected Left for price = 0")
     )

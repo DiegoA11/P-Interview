@@ -11,7 +11,7 @@ object errors {
       override def message: String = s"Unknown currency: '$invalidCurrency'"
     }
 
-    final case class InvalidPrice(invalidPrice: Double) extends DomainError {
+    final case class InvalidPrice(invalidPrice: BigDecimal) extends DomainError {
       override def message: String = s"Invalid price: '$invalidPrice'"
     }
   }

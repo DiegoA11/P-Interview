@@ -8,8 +8,8 @@ sealed abstract case class Price(value: BigDecimal)
 
 object Price {
 
-  def apply(value: Double): Either[DomainError, Price] =
+  def apply(value: BigDecimal): Either[DomainError, Price] =
     if (value > 0) {
-      new Price(BigDecimal(value)) {}.asRight
-    } else InvalidPrice(value.doubleValue).asLeft
+      new Price(value) {}.asRight
+    } else InvalidPrice(value).asLeft
 }
