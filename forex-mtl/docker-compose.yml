@@ -1,0 +1,5 @@
+services:
+  one-frame:
+    image: paidyinc/one-frame
+    ports:
+      - "8080:8080"
