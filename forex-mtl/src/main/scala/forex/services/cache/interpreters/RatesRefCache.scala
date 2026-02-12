@@ -9,10 +9,11 @@ import forex.services.cache.RatesCacheAlgebra
 import forex.services.errors.ServiceError
 import forex.services.errors.ServiceError.OneFrameLookupFailed
 import forex.services.oneFrame.OneFrameClientAlgebra
+import org.typelevel.log4cats.Logger
 
 import java.time.{ Duration, OffsetDateTime }
 
-class RatesRefCache[F[_]: Concurrent: Timer] private[cache] (
+class RatesRefCache[F[_]: Concurrent: Timer: Logger] private[cache] (
     ref: Ref[F, Map[Rate.Pair, Rate]],
     oneFrameClient: OneFrameClientAlgebra[F],
     config: CacheConfig
@@ -44,11 +45,11 @@ class RatesRefCache[F[_]: Concurrent: Timer] private[cache] (
       .flatMap {
         case Right(rates) =>
           val updated = rates.map(r => r.pair -> r).toMap
-          ref.set(updated)
+          ref.set(updated) *>
+            Logger[F].info(s"Cache refreshed successfully with ${rates.size} rates")
 
-        case Left(_) =>
-          // Ideally log an error here.
-          Concurrent[F].unit
+        case Left(error) =>
+          Logger[F].error(s"Cache refresh failed: ${error.message}")
       }
 
   private[cache] def startBackgroundRefresh: F[Unit] = {
@@ -68,7 +69,7 @@ class RatesRefCache[F[_]: Concurrent: Timer] private[cache] (
 
 object RatesRefCache {
 
-  def apply[F[_]: Concurrent: Timer](
+  def apply[F[_]: Concurrent: Timer: Logger](
       oneFrameClient: OneFrameClientAlgebra[F],
       config: CacheConfig
   ): F[RatesCacheAlgebra[F]] =

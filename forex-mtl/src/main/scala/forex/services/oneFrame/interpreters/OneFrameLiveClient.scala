@@ -14,8 +14,9 @@ import org.http4s.circe.jsonOf
 import org.http4s.{ EntityDecoder, Header, Headers, Request, Uri }
 import org.http4s.client.Client
 import org.typelevel.ci.CIStringSyntax
+import org.typelevel.log4cats.Logger
 
-final case class OneFrameLiveClient[F[_]: Sync](
+final class OneFrameLiveClient[F[_]: Sync: Logger](
     client: Client[F],
     config: OneFrameClientConfig
 ) extends OneFrameClientAlgebra[F] {
@@ -23,11 +24,11 @@ final case class OneFrameLiveClient[F[_]: Sync](
   private implicit val listDecoder: EntityDecoder[F, List[OneFrameResponseDTO]] =
     jsonOf[F, List[OneFrameResponseDTO]]
 
-  private val baseRatesUri: Uri =
+  private val baseServiceUri: Uri =
     Uri(
       scheme = Scheme.http.some,
       authority = Authority(host = RegName(config.host), port = config.port.some).some,
-      path = Path.empty / "rates"
+      path = Path.empty
     )
 
   private val authHeaders: Headers =
@@ -35,39 +36,48 @@ final case class OneFrameLiveClient[F[_]: Sync](
 
   override def get(pairs: List[Rate.Pair]): F[Either[ServiceError, List[Rate]]] = {
     val requestDto = OneFrameRequestDTO.fromPairs(pairs)
-    val uri        = baseRatesUri.withMultiValueQueryParams(requestDto.asMultiValueQueryParams)
+    val uri        = baseServiceUri.withMultiValueQueryParams(requestDto.asMultiValueQueryParams)
 
     val request = Request[F](
       method = GET,
-      uri = uri,
+      uri = uri / "rates",
       headers = authHeaders
     )
 
-    client
-      .run(request)
-      .use { response =>
-        val serviceResponse: F[Either[ServiceError, List[Rate]]] =
+    type Result = Either[ServiceError, List[Rate]]
+
+    Logger[F].debug(s"Requesting ${pairs.size} pair(s) from OneFrame") *>
+      client
+        .run(request)
+        .use { response =>
           if (response.status.isSuccess) {
-            response.as[List[OneFrameResponseDTO]].map { dtos =>
+            response.as[List[OneFrameResponseDTO]].flatMap { dtos =>
               if (pairs.nonEmpty && dtos.isEmpty) {
-                ServiceError
-                  .OneFrameLookupFailed(s"No rates returned for requested pairs: ${pairs.mkString(", ")}")
-                  .asLeft
-              } else dtos.traverse(OneFrameMapper.toDomain)
+                val message = s"No rates returned for requested pairs: ${pairs.mkString(", ")}"
+                Logger[F].warn(message).as[Result](ServiceError.OneFrameLookupFailed(message).asLeft)
+              } else {
+                dtos.traverse(OneFrameMapper.toDomain) match {
+                  case Right(rates) =>
+                    Logger[F]
+                      .debug(s"Received ${rates.size} rate(s) from OneFrame")
+                      .as[Result](rates.asRight)
+                  case Left(error) =>
+                    Logger[F]
+                      .error(s"Failed to map OneFrame response: ${error.message}")
+                      .as[Result](error.asLeft)
+                }
+              }
             }
           } else {
-            response.bodyText.compile.string.map { body =>
-              ServiceError
-                .OneFrameLookupFailed(
-                  s"OneFrame returned HTTP ${response.status.code} ${response.status.reason}. Body: $body"
-                )
-                .asLeft[List[Rate]]
+            response.bodyText.compile.string.flatMap { body =>
+              val msg = s"OneFrame returned HTTP ${response.status.code} ${response.status.reason}. Body: $body"
+              Logger[F].error(msg).as[Result](ServiceError.OneFrameLookupFailed(msg).asLeft)
             }
           }
-        serviceResponse
-      }
-      .handleError { error =>
-        ServiceError.OneFrameLookupFailed(s"OneFrame HTTP error: ${error.getMessage}").asLeft
-      }
+        }
+        .handleErrorWith { error =>
+          val msg = s"OneFrame HTTP error: ${error.getMessage}"
+          Logger[F].error(error)(msg).as[Result](ServiceError.OneFrameLookupFailed(msg).asLeft)
+        }
   }
 }

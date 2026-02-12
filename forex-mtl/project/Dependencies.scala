@@ -12,6 +12,7 @@ object Dependencies {
 
     val kindProjector  = "0.13.2"
     val logback        = "1.2.3"
+    val log4cats       = "1.3.1"
     val scalaCheck     = "1.15.3"
     val scalaTest      = "3.2.7"
     val catsScalaCheck = "0.3.2"
@@ -34,6 +35,7 @@ object Dependencies {
     lazy val circeGeneric    = circe("circe-generic")
     lazy val circeGenericExt = circe("circe-generic-extras")
     lazy val circeParser     = circe("circe-parser")
+    lazy val log4catsSlf4j   = "org.typelevel" %% "log4cats-slf4j" % Versions.log4cats
     lazy val pureConfig      = "com.github.pureconfig" %% "pureconfig" % Versions.pureConfig
 
     // Compiler plugins

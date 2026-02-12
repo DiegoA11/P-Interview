@@ -9,12 +9,16 @@ import forex.services.cache.interpreters.RatesRefCache
 import forex.services.errors.ServiceError
 import forex.services.errors.ServiceError.OneFrameLookupFailed
 import forex.services.oneFrame.OneFrameClientAlgebra
+import forex.utils.NoOpLogger
+import org.typelevel.log4cats.Logger
 import weaver.SimpleIOSuite
 
 import java.time.OffsetDateTime
 import scala.concurrent.duration._
 
 object RatesRefCacheSpec extends SimpleIOSuite {
+
+  private implicit val logger: Logger[IO] = NoOpLogger[IO]
 
   private val defaultConfig = CacheConfig(
     refreshInterval = 5.minutes,

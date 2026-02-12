@@ -5,16 +5,20 @@ import cats.syntax.all._
 import forex.config.OneFrameClientConfig
 import forex.domain.{ Currency, Rate }
 import forex.services.errors.ServiceError
+import forex.utils.NoOpLogger
 import org.http4s.Method.GET
 import org.http4s.client.Client
 import org.http4s.dsl.io._
 import org.http4s.{ HttpApp, Request, Response, Status }
 import org.typelevel.ci.CIStringSyntax
+import org.typelevel.log4cats.Logger
 import weaver.SimpleIOSuite
 
 import java.time.OffsetDateTime
 
 object OneFrameLiveClientSpec extends SimpleIOSuite {
+
+  private implicit val noopLogger: Logger[IO] = NoOpLogger[IO]
 
   private val token = "<TOKEN_PLACEHOLDER>"
 
@@ -26,7 +30,7 @@ object OneFrameLiveClientSpec extends SimpleIOSuite {
     )
 
   private def buildMockClient(app: HttpApp[IO]): OneFrameLiveClient[IO] =
-    OneFrameLiveClient[IO](Client.fromHttpApp(app), config)
+    new OneFrameLiveClient[IO](Client.fromHttpApp(app), config)
 
   private val usdJpy: Rate.Pair = Rate.Pair(Currency.USD, Currency.JPY)
   private val eurUsd: Rate.Pair = Rate.Pair(Currency.EUR, Currency.USD)
