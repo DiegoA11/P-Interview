@@ -142,9 +142,8 @@ object RatesRefCacheSpec extends SimpleIOSuite {
     val client = stubClient(Right(rates))
     val pair   = rates.head.pair
 
-    for {
-      cache <- RatesRefCache[IO](client, defaultConfig)
-      result <- cache.get(pair)
-    } yield expect(result.isRight)
+    RatesRefCache[IO](client, defaultConfig).use { cache =>
+      cache.get(pair).map(result => expect(result.isRight))
+    }
   }
 }

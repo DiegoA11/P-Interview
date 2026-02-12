@@ -1,7 +1,7 @@
 package forex.services.cache.interpreters
 
 import cats.effect.concurrent.Ref
-import cats.effect.{ Clock, Concurrent, Timer }
+import cats.effect.{ Clock, Concurrent, Fiber, Resource, Timer }
 import cats.syntax.all._
 import forex.config.CacheConfig
 import forex.domain.{ Currency, Rate }
@@ -57,13 +57,13 @@ class RatesRefCache[F[_]: Concurrent: Timer: Logger] private[cache] (
         Logger[F].error(s"Unexpected error during cache refresh: ${throwable.getMessage}")
       }
 
-  private[cache] def startBackgroundRefresh: F[Unit] = {
+  private[cache] def startBackgroundRefresh: F[Fiber[F, Unit]] = {
     val loop: F[Unit] =
       (Timer[F].sleep(config.refreshInterval) *> refresh.handleErrorWith { throwable =>
         Logger[F].error(s"Background refresh failed: ${throwable.getMessage}")
       }).foreverM[Unit]
 
-    Concurrent[F].start(loop).void
+    Concurrent[F].start(loop)
   }
 
   private val allPairs: List[Rate.Pair] =
@@ -79,13 +79,20 @@ object RatesRefCache {
   def apply[F[_]: Concurrent: Timer: Logger](
       oneFrameClient: OneFrameClientAlgebra[F],
       config: CacheConfig
-  ): F[RatesCacheAlgebra[F]] =
-    for {
-      ref <- Ref.of[F, Map[Rate.Pair, Rate]](Map.empty)
-      cache = new RatesRefCache[F](ref, oneFrameClient, config)
-      _ <- cache.refresh.handleErrorWith { throwable =>
-            Logger[F].warn(s"Initial cache refresh failed, starting with empty cache: ${throwable.getMessage}")
-          }
-      _ <- cache.startBackgroundRefresh
-    } yield cache
+  ): Resource[F, RatesCacheAlgebra[F]] =
+    Resource
+      .make(
+        for {
+          ref <- Ref.of[F, Map[Rate.Pair, Rate]](Map.empty)
+          cache = new RatesRefCache[F](ref, oneFrameClient, config)
+          _ <- cache.refresh.handleErrorWith { throwable =>
+                Logger[F].warn(s"Initial cache refresh failed, starting with empty cache: ${throwable.getMessage}")
+              }
+          fiber <- cache.startBackgroundRefresh
+        } yield (cache, fiber)
+      ) {
+        case (_, fiber) =>
+          Logger[F].info("Cancelling background cache refresh") *> fiber.cancel
+      }
+      .map(_._1)
 }

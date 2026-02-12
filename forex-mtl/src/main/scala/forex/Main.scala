@@ -29,7 +29,7 @@ class Application[F[_]: ConcurrentEffect: Timer] {
       client <- BlazeClientBuilder[F](ec).stream
       oneFrameClient = new OneFrameLiveClient[F](client, config.oneFrame)
       _ <- Stream.eval(Logger[F].info(s"Connected to OneFrame at ${config.oneFrame.host}:${config.oneFrame.port}"))
-      ratesCache <- Stream.eval(RatesRefCache[F](oneFrameClient, config.cache))
+      ratesCache <- Stream.resource(RatesRefCache[F](oneFrameClient, config.cache))
       _ <- Stream.eval(Logger[F].info(s"Cache initialized, refresh interval: ${config.cache.refreshInterval}"))
       module = new Module[F](ratesCache, config)
       _ <- Stream.eval(Logger[F].info(s"HTTP server starting on ${config.http.host}:${config.http.port}"))
