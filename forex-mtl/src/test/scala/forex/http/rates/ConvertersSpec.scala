@@ -40,6 +40,16 @@ object ConvertersSpec extends SimpleIOSuite with Checkers {
     }
   }
 
+  test("toProgramRequest fails for identical currencies") {
+    forall(currencyGen) { currency =>
+      val req = GetApiRequest(currency.show, currency.show)
+      req.toProgramRequest.fold(
+        message => expect(message.contains("identical")),
+        _ => failure("Expected Left for identical currencies")
+      )
+    }
+  }
+
   test("toProgramRequest fails for invalid 'from' currency") {
     forall(invalidCurrencyCodeGen) { invalid =>
       val req = GetApiRequest(invalid, "USD")

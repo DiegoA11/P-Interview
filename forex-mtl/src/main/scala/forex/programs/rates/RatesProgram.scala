@@ -11,17 +11,9 @@ class RatesProgram[F[_]: Applicative](
 ) extends RatesProgramAlgebra[F] {
 
   override def get(request: Protocol.GetRatesRequest): F[Either[RatesProgramError, Rate]] =
-    if (request.from == request.to) {
-      RatesProgramError
-        .RateLookupFailed(s"Cannot get rate for identical currencies: ${request.from}")
-        .asLeft[Rate]
-        .leftWiden[RatesProgramError]
-        .pure[F]
-
-    } else
-      ratesCache
-        .get(Rate.Pair(request.from, request.to))
-        .map(_.leftMap(toProgramError))
+    ratesCache
+      .get(Rate.Pair(request.from, request.to))
+      .map(_.leftMap(toProgramError))
 
 }
 

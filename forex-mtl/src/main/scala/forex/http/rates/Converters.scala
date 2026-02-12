@@ -22,10 +22,14 @@ object Converters {
   private[rates] implicit class GetApiRequestOps(val req: GetApiRequest) extends AnyVal {
     def toProgramRequest: Either[String, RatesProgramProtocol.GetRatesRequest] =
       (Currency.fromString(req.from), Currency.fromString(req.to))
-        .mapN { (from, to) =>
-          RatesProgramProtocol.GetRatesRequest(from, to)
-        }
+        .mapN((from, to) => (from, to))
         .leftMap(_.message)
+        .flatMap {
+          case (from, to) if from == to =>
+            s"Cannot get rate for identical currencies: ${from.show}".asLeft
+          case (from, to) =>
+            RatesProgramProtocol.GetRatesRequest(from, to).asRight
+        }
   }
 
 }

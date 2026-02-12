@@ -20,7 +20,7 @@ object OneFrameMapper {
         .toValidatedNec
 
     def validatePrice(raw: BigDecimal, field: String): ValidatedNec[ServiceError, Price] =
-      Price(raw.doubleValue)
+      Price(raw)
         .leftMap(e => invalid(s"$field: ${e.message}"))
         .toValidatedNec
 

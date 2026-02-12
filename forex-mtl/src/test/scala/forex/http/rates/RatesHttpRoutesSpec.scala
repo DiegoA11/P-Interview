@@ -54,6 +54,14 @@ object RatesHttpRoutesSpec extends SimpleIOSuite {
     }
   }
 
+  test("returns 400 when from and to currencies are identical") {
+    val program = stubProgram(freshRateForPair(Rate.Pair(Currency.USD, Currency.JPY)).asRight)
+
+    for {
+      response <- runRequest(program, buildRequest("USD", "USD"))
+    } yield expect(response.status == Status.BadRequest)
+  }
+
   test("returns 400 for invalid 'from' currency") {
     val program = stubProgram(freshRateForPair(Rate.Pair(Currency.USD, Currency.JPY)).asRight)
 
