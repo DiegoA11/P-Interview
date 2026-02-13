@@ -1,8 +1,7 @@
 package forex.services.cache
 
-import forex.domain.Rate
-import forex.services.errors.ServiceError
+import forex.domain.{ AppError, Rate }
 
 trait RatesCacheAlgebra[F[_]] {
-  def get(pair: Rate.Pair): F[Either[ServiceError, Rate]]
+  def get(pair: Rate.Pair): F[Either[AppError, Rate]]
 }

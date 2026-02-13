@@ -1,7 +1,10 @@
 package forex.http.rates
 
+import cats.data.ValidatedNec
 import cats.syntax.all._
-import forex.domain.{ Currency, Rate }
+import forex.domain.{ AppError, Currency, Rate }
+import forex.domain.AppError.ValidationError.{ IdenticalCurrencies, InvalidCurrency }
+import forex.programs.rates.Protocol.GetRatesRequest
 import forex.programs.rates.{ Protocol => RatesProgramProtocol }
 
 object Converters {
@@ -20,15 +23,16 @@ object Converters {
   }
 
   private[rates] implicit class GetApiRequestOps(val req: GetApiRequest) extends AnyVal {
-    def toProgramRequest: Either[String, RatesProgramProtocol.GetRatesRequest] =
-      (Currency.fromString(req.from), Currency.fromString(req.to))
-        .mapN((from, to) => (from, to))
-        .leftMap(_.message)
-        .flatMap {
+    def toProgramRequest: ValidatedNec[AppError, GetRatesRequest] =
+      (
+        Currency.fromString(req.from).leftMap(_ => InvalidCurrency(req.from)).toValidatedNec,
+        Currency.fromString(req.to).leftMap(_ => InvalidCurrency(req.to)).toValidatedNec
+      ).mapN((from, to) => (from, to))
+        .andThen {
           case (from, to) if from == to =>
-            s"Cannot get rate for identical currencies: ${from.show}".asLeft
+            (IdenticalCurrencies(from.show)).invalidNec
           case (from, to) =>
-            RatesProgramProtocol.GetRatesRequest(from, to).asRight
+            RatesProgramProtocol.GetRatesRequest(from, to).validNec
         }
   }
 

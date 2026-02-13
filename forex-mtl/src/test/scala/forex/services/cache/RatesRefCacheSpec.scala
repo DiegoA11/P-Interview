@@ -6,8 +6,8 @@ import forex.config.CacheConfig
 import forex.domain._
 import forex.domain.Generators._
 import forex.services.cache.interpreters.RatesRefCache
-import forex.services.errors.ServiceError
-import forex.services.errors.ServiceError.OneFrameLookupFailed
+import forex.domain.AppError
+import forex.domain.AppError.ServiceError.RateLookupFailed
 import forex.services.oneFrame.OneFrameClientAlgebra
 import forex.utils.NoOpLogger
 import org.typelevel.log4cats.Logger
@@ -26,11 +26,11 @@ object RatesRefCacheSpec extends SimpleIOSuite {
   )
 
   private def stubClient(
-      result: Either[ServiceError, List[Rate]]
+      result: Either[AppError, List[Rate]]
   ): OneFrameClientAlgebra[IO] = (_: List[Rate.Pair]) => IO.pure(result)
 
   private def countingClient(
-      result: Either[ServiceError, List[Rate]],
+      result: Either[AppError, List[Rate]],
       counter: Ref[IO, Int]
   ): OneFrameClientAlgebra[IO] = (_: List[Rate.Pair]) => counter.update(_ + 1) *> IO.pure(result)
 
@@ -115,7 +115,7 @@ object RatesRefCacheSpec extends SimpleIOSuite {
   test("refresh does not clear cache when the client returns an error") {
     val pair          = Rate.Pair(Currency.USD, Currency.JPY)
     val rate          = freshRateForPair(pair)
-    val failingClient = stubClient(Left(OneFrameLookupFailed("OneFrame is down")))
+    val failingClient = stubClient(Left(RateLookupFailed("OneFrame is down")))
 
     for {
       cache <- buildCache(failingClient, initialData = Map(pair -> rate))

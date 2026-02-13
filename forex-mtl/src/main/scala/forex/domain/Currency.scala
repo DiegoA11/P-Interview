@@ -2,8 +2,7 @@ package forex.domain
 
 import cats.Show
 import cats.syntax.all._
-import forex.domain.errors.DomainError
-import forex.domain.errors.DomainError.InvalidCurrency
+import forex.domain.AppError.ValidationError.InvalidCurrency
 
 sealed trait Currency
 
@@ -23,7 +22,7 @@ object Currency {
 
   implicit val show: Show[Currency] = Show.fromToString
 
-  def fromString(s: String): Either[DomainError, Currency] = s.toUpperCase match {
+  def fromString(s: String): Either[AppError, Currency] = s.toUpperCase match {
     case "AUD"   => AUD.asRight
     case "CAD"   => CAD.asRight
     case "CHF"   => CHF.asRight

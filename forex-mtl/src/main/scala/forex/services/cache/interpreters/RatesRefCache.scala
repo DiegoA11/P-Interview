@@ -5,9 +5,9 @@ import cats.effect.{ Clock, Concurrent, Fiber, Resource, Timer }
 import cats.syntax.all._
 import forex.config.CacheConfig
 import forex.domain.{ Currency, Rate }
+import forex.domain.AppError
+import forex.domain.AppError.ServiceError.RateLookupFailed
 import forex.services.cache.RatesCacheAlgebra
-import forex.services.errors.ServiceError
-import forex.services.errors.ServiceError.OneFrameLookupFailed
 import forex.services.oneFrame.OneFrameClientAlgebra
 import org.typelevel.log4cats.Logger
 
@@ -20,18 +20,18 @@ class RatesRefCache[F[_]: Concurrent: Timer: Logger] private[cache] (
     config: CacheConfig
 ) extends RatesCacheAlgebra[F] {
 
-  override def get(pair: Rate.Pair): F[Either[ServiceError, Rate]] =
+  override def get(pair: Rate.Pair): F[Either[AppError, Rate]] =
     for {
       now <- Clock[F].realTime(TimeUnit.MILLISECONDS).map(ms => Instant.ofEpochMilli(ms).atOffset(ZoneOffset.UTC))
       cache <- ref.get
     } yield
       cache
         .get(pair)
-        .fold[Either[ServiceError, Rate]](
-          OneFrameLookupFailed(s"No cached rate for ${pair.from}${pair.to}").asLeft
+        .fold[Either[AppError, Rate]](
+          RateLookupFailed(s"No cached rate for ${pair.from}${pair.to}").asLeft
         ) { rate =>
           if (isStale(rate, now))
-            OneFrameLookupFailed(s"Cached rate for ${pair.from}${pair.to} is stale").asLeft
+            RateLookupFailed(s"Cached rate for ${pair.from}${pair.to} is stale").asLeft
           else
             rate.asRight
         }

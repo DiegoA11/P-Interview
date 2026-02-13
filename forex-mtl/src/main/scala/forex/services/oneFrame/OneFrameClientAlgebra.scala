@@ -1,8 +1,7 @@
 package forex.services.oneFrame
 
-import forex.domain.Rate
-import forex.services.errors._
+import forex.domain.{ AppError, Rate }
 
 trait OneFrameClientAlgebra[F[_]] {
-  def get(pairs: List[Rate.Pair]): F[Either[ServiceError, List[Rate]]]
+  def get(pairs: List[Rate.Pair]): F[Either[AppError, List[Rate]]]
 }

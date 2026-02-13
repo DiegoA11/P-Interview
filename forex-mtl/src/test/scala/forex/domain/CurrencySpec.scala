@@ -3,7 +3,7 @@ package forex.domain
 import cats.Show
 import forex.domain.Currency._
 import forex.domain.Generators._
-import forex.domain.errors.DomainError.InvalidCurrency
+import forex.domain.AppError.ValidationError.InvalidCurrency
 import weaver.SimpleIOSuite
 import weaver.scalacheck.Checkers
 

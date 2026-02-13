@@ -1,6 +1,6 @@
 package forex.domain
 
-import forex.domain.errors.DomainError.InvalidPrice
+import forex.domain.AppError.ValidationError.InvalidPrice
 import org.scalacheck.Gen
 import weaver.SimpleIOSuite
 import weaver.scalacheck.Checkers

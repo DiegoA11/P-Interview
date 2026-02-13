@@ -5,14 +5,14 @@ import forex.domain._
 import forex.domain.Generators._
 import forex.programs.rates.Protocol.GetRatesRequest
 import forex.services.cache.RatesCacheAlgebra
-import forex.services.errors.ServiceError
-import forex.services.errors.ServiceError.OneFrameLookupFailed
+import forex.domain.AppError
+import forex.domain.AppError.ServiceError.RateLookupFailed
 import weaver.SimpleIOSuite
 import weaver.scalacheck.Checkers
 
 object RatesProgramSpec extends SimpleIOSuite with Checkers {
 
-  private def stubCache(result: Either[ServiceError, Rate]): RatesCacheAlgebra[Id] =
+  private def stubCache(result: Either[AppError, Rate]): RatesCacheAlgebra[Id] =
     (_: Rate.Pair) => result
 
   test("get returns a Rate when the cache has a fresh rate") {
@@ -29,14 +29,14 @@ object RatesProgramSpec extends SimpleIOSuite with Checkers {
 
   test("get returns RateLookupFailed when the cache returns an error") {
     forall(distinctCurrencyPairGen) { pair =>
-      val errorMsg = s"No cached rate for ${pair.from}${pair.to}"
-      val cache    = stubCache(Left(OneFrameLookupFailed(errorMsg)))
+      val errorMessage = s"No cached rate for ${pair.from}${pair.to}"
+      val cache    = stubCache(Left(RateLookupFailed(errorMessage)))
       val program  = RatesProgram[Id](cache)
 
       val result = program.get(GetRatesRequest(pair.from, pair.to))
 
       result.fold(
-        error => expect(error.message == errorMsg),
+        error => expect(error.message == errorMessage),
         other => failure(s"Expected RateLookupFailed, got $other")
       )
     }

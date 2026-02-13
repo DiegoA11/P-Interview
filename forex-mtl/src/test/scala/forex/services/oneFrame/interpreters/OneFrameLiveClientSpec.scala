@@ -4,7 +4,7 @@ import cats.effect.IO
 import cats.syntax.all._
 import forex.config.OneFrameClientConfig
 import forex.domain.{ Currency, Rate }
-import forex.services.errors.ServiceError
+import forex.domain.AppError
 import forex.utils.NoOpLogger
 import org.http4s.Method.GET
 import org.http4s.client.Client
@@ -88,7 +88,7 @@ object OneFrameLiveClientSpec extends SimpleIOSuite {
 
     client.get(List(usdJpy)).map {
       _.fold(
-        error => expect(error.isInstanceOf[ServiceError]),
+        error => expect(error.isInstanceOf[AppError.ServiceError]),
         response => failure(s"Expected Left, got Right($response)")
       )
     }

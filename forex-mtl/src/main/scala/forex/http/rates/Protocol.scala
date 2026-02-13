@@ -1,6 +1,7 @@
 package forex.http
 package rates
 
+import forex.domain.AppError
 import io.circe._
 import io.circe.generic.extras.Configuration
 import io.circe.generic.extras.semiauto.deriveConfiguredEncoder
@@ -24,6 +25,10 @@ object Protocol {
       price: BigDecimal,
       timestamp: OffsetDateTime
   )
+
+  final case class ErrorResponse(errors: List[AppError])
+
+  implicit val encoder: Encoder[ErrorResponse] = deriveConfiguredEncoder[ErrorResponse]
 
   implicit val offsetDateTimeEncoder: Encoder[OffsetDateTime] =
     Encoder.encodeString.contramap(_.toString)

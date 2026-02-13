@@ -2,6 +2,7 @@ package forex.http.rates
 
 import cats.syntax.all._
 import forex.domain.Generators._
+import forex.domain.AppError
 import forex.http.rates.Converters._
 import forex.http.rates.Protocol.GetApiRequest
 import weaver.SimpleIOSuite
@@ -27,7 +28,7 @@ object ConvertersSpec extends SimpleIOSuite with Checkers {
     forall(distinctCurrencyPairGen) { pair =>
       val req = GetApiRequest(pair.from.show, pair.to.show)
       req.toProgramRequest.fold(
-        message => failure(s"Expected Right, got Left($message)"),
+        errors => failure(s"Expected Valid, got Invalid($errors)"),
         request => expect.all(request.from == pair.from, request.to == pair.to)
       )
     }
@@ -36,31 +37,64 @@ object ConvertersSpec extends SimpleIOSuite with Checkers {
   test("toProgramRequest is case-insensitive") {
     forall(distinctCurrencyPairGen) { pair =>
       val req = GetApiRequest(pair.from.show.toLowerCase, pair.to.show.toLowerCase)
-      expect(req.toProgramRequest.isRight)
+      expect(req.toProgramRequest.isValid)
     }
   }
 
-  test("toProgramRequest fails for identical currencies") {
+  test("toProgramRequest fails with IdenticalCurrencies for identical currencies") {
     forall(currencyGen) { currency =>
       val req = GetApiRequest(currency.show, currency.show)
       req.toProgramRequest.fold(
-        message => expect(message.contains("identical")),
-        _ => failure("Expected Left for identical currencies")
+        errors => {
+          val err = errors.head
+          expect.all(
+            err.isInstanceOf[AppError.ValidationError.IdenticalCurrencies],
+            err.code == "forex.identical_currencies"
+          )
+        },
+        _ => failure("Expected Invalid for identical currencies")
       )
     }
   }
 
-  test("toProgramRequest fails for invalid 'from' currency") {
+  test("toProgramRequest fails with InvalidCurrency for invalid 'from' currency") {
     forall(invalidCurrencyCodeGen) { invalid =>
       val req = GetApiRequest(invalid, "USD")
-      expect(req.toProgramRequest.isLeft)
+      req.toProgramRequest.fold(
+        errors => expect(errors.head.isInstanceOf[AppError.ValidationError.InvalidCurrency]),
+        _ => failure("Expected Invalid")
+      )
     }
   }
 
-  test("toProgramRequest fails for invalid 'to' currency") {
+  test("toProgramRequest fails with InvalidCurrency for invalid 'to' currency") {
     forall(invalidCurrencyCodeGen) { invalid =>
       val req = GetApiRequest("USD", invalid)
-      expect(req.toProgramRequest.isLeft)
+      req.toProgramRequest.fold(
+        errors => expect(errors.head.isInstanceOf[AppError.ValidationError.InvalidCurrency]),
+        _ => failure("Expected Invalid")
+      )
+    }
+  }
+
+  test("toProgramRequest accumulates errors when both currencies are invalid") {
+    val bothInvalidGen = for {
+      from <- invalidCurrencyCodeGen
+      to <- invalidCurrencyCodeGen
+    } yield (from, to)
+
+    forall(bothInvalidGen) { case (invalidFrom, invalidTo) =>
+      val req = GetApiRequest(invalidFrom, invalidTo)
+      req.toProgramRequest.fold(
+        errors => {
+          val errorList = errors.toNonEmptyList.toList
+          expect.all(
+            errorList.size == 2,
+            errorList.forall(_.isInstanceOf[AppError.ValidationError.InvalidCurrency])
+          )
+        },
+        _ => failure("Expected Invalid for both currencies")
+      )
     }
   }
 }
